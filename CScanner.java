@@ -1,8 +1,19 @@
+/*
+ *  ECS140A Nitta
+ *  Project 2
+ *  Part 1 : CScanner
+ * 
+ *  
+ */
+
+
+// note to Alice for later use maybe:
+//token = new CToken(linenum, charnum, type, buffer);
+//System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
 //package ecs140p2;
 
-import java.io.BufferedReader;
+
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PushbackReader;
@@ -17,44 +28,42 @@ public class CScanner {
 	
 	public static void main(String[] args) throws IOException{
 			
-			CToken token  = null;
-			CToken previousToken = null;
+			CToken token  = new CToken(0,0,"","");
+			CToken previousToken = new CToken(0,0,"","");
 		
 	        //BufferedReader reader = new BufferedReader(
+			
+			// instantiate the pushback reader's buffer size to 2 
+			// --> used when unreading 2 things in a roll
 			PushbackReader reader = new PushbackReader(
 	            new InputStreamReader(
-	                new FileInputStream("ex5.x"),
-	                Charset.forName("UTF-8")));
+	                new FileInputStream("example3.x"),
+	                Charset.forName("UTF-8")), 2);
 			int c;
 			while((c = reader.read()) != -1) {
 				reader.unread(c);
 				token = GetNextToken(reader, previousToken);
 				token.print();
-				//System.out.println("returned");
 			}
 	}
 	
 	// get the next in the list
 	public static CToken GetNextToken(PushbackReader reader, CToken previousToken) throws IOException{
-		CToken token = null;
+		CToken token = new CToken(0,0,"","");
 		String buffer = "";
 		String type = "";
 		int c = 0;
         while(type.equals("") && ((c = reader.read()) != -1) ){//token == null) {
           char character = (char) c;
-          //System.out.println(character);
           charnum++;
-          //System.out.println(character);
           
-          
-          
+                    
           if(character == '\n'){
         	  // remember to print out a line for end of file
         	  if (buffer.compareTo("") != 0) {
 	        	  type = categorize(buffer);
-	        	  token = new CToken(linenum, charnum, type, buffer);
-	        	  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
-        		  //System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
+	        	  token.set(linenum, index, type, buffer);
+
         		  buffer = "";
         	  }
         	  linenum++;
@@ -68,13 +77,10 @@ public class CScanner {
           }
           
           else if(character == ' '){
-        	  //charnum++;
-        	  //index++;
         	  if (buffer.compareTo("") != 0) {
 	        	  type = categorize(buffer);
-	        	  token = new CToken(linenum, charnum, type, buffer);
-	        	  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
-        		  //System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
+	        	  token.set(linenum, index, type, buffer);
+
         		  buffer = "";
         	  }
         	  index = charnum + 1;
@@ -85,36 +91,48 @@ public class CScanner {
           else if (character == '.') {
         	  c  = reader.read();	//PEEK NEXT CHARACTER
         	  character = (char) c;
-        	  if (!Character.isDigit(character)){ // identifier.identifier i.e class.type
-	        	  type = categorize(buffer);
-	        	  token = new CToken(linenum, charnum, type, buffer);
-	        	  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
-        		  //System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
-        		  buffer = "";
-        		  reader.unread((int)character);
-        		  //////////
-        		  //problem///
-        		  //////////
-        		  buffer += '.';
-        		  index = charnum;
-	        	  type = categorize(buffer);
-	        	  token = new CToken(linenum, charnum, type, buffer);
-	        	  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
-        		  //System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
-        		  buffer = "";
-        		  index = charnum+1; //ADDED THIS!!!!!!
-        		  //index = charnum;
+        	  
+        	  // identifier.identifier i.e class.type
+        	  if (!Character.isDigit(character)){ 
+        		  
+        		  // create token of identifier before .
+        		  if(!buffer.equals("")) {
+        			  type = categorize(buffer);
+        			  token.set(linenum, index, type, buffer);
+
+        			  reader.unread(c);
+        			  // unread the . so it can be detected as a token the next round
+        			  int period = '.';
+        			  reader.unread(period);
+        			  // char at the char before '.', but charnum is at '.' right now, so decrement
+        			  charnum--;
+        			  //break;
+        		  }
+        		  
+        		  // past the first identifier --> create '.' token
+        		  else {
+        			  reader.unread((int)character);
+        			  buffer += '.';
+        			  index = charnum;
+        			  type = categorize(buffer);
+        			  token.set(linenum, index, type, buffer);
+
+        			  index = charnum + 1;
+        		  }
+
         	  }
         	  else if (Character.isDigit(character)){ //float
         		  reader.unread((int)character);
         		  //buffer += character;
         		  buffer += '.';
-        		  //charnum++;
         	  }   		  
           }
+          
+          
           // check if - is negative or minus sign; check next token 
           //  -- if next token is const literal == neg
           //  -- else minus
+          // MUST CHECK IF PREV TOKEN IS IDENTIFIER --> IF YES = OPERATOR
           else if ( character == '-'){	//check negative or subtraction
         	  buffer += character;
         	  c  = reader.read();
@@ -122,9 +140,8 @@ public class CScanner {
         	  if (character == ' '){		// subtraction
         		  // move printing to later????
 	        	  type = categorize(buffer);
-	        	  token = new CToken(linenum, charnum, type, buffer);
-	        	  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
-        		  //System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
+	        	  token.set(linenum, index, type, buffer);
+
         		  buffer = "";
         		  reader.unread((int)character);
         		  index = charnum + 2; //ADDED THIS!!! 
@@ -167,9 +184,8 @@ public class CScanner {
         	  // print identifier preceding operator
         	  if(buffer.compareTo("") != 0){
 	        	  type = categorize(buffer);
-	        	  token = new CToken(linenum, charnum, type, buffer);
-	        	  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
-        		  //System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
+	        	  token.set(linenum, index, type, buffer);
+
 	        	  buffer = "";
 	        	  reader.unread(c);
 	        	  charnum--;
@@ -183,9 +199,8 @@ public class CScanner {
         	  // UNREAD THIS AND DONT PRINT OUT FOR PARSER
         	  // DONT WANT TO READ 2 NEXT TOKEN
         	  type = categorize(buffer);
-        	  token = new CToken(linenum, charnum, type, buffer);
-        	  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
-        	  //System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
+        	  token.set(linenum, index, type, buffer);
+
         	  buffer = "";
         	  index = charnum + 1; //set the index to the next char
           }
@@ -199,8 +214,8 @@ public class CScanner {
         	  if(!buffer.equals("")){
         		  //System.out.printf("current buffer:   %s%n", buffer);
         		  type = categorize(buffer);
-        		  token = new CToken(linenum, charnum, type, buffer);
-        		  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
+        		  token.set(linenum, index, type, buffer);
+
         		  index = charnum;
         		  // unread the invalid token
         		  reader.unread(c);
@@ -212,8 +227,8 @@ public class CScanner {
         	  //buffer = "";
         	  buffer += character;
         	  type = categorize(buffer);
-        	  token = new CToken(linenum, charnum, type, buffer);
-    		  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
+        	  token.set(linenum, index, type, buffer);
+
         	  index = charnum + 1;
     		  //System.out.printf("execute?   %s%n", buffer);
           }
@@ -246,8 +261,8 @@ public class CScanner {
         	// EOF --> print out last line for CScanner
         	//else {
         		type = categorize(buffer);
-        		token = new CToken(linenum, charnum, type, buffer);
-        		//System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
+        		token.set(linenum, index, type, buffer);
+
         	//}
         	//System.out.println("EOF");
         }
