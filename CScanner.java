@@ -1,4 +1,4 @@
-
+//package ecs140p2;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -8,125 +8,255 @@ import java.io.InputStreamReader;
 import java.io.PushbackReader;
 import java.nio.charset.Charset;
 
-//import package.CToken;
+//import ecs140p2.CToken;
 
 public class CScanner {
-
+	public static int linenum = 1;
+	public static int charnum = 0;
+	public static int index = 1;
+	
 	public static void main(String[] args) throws IOException{
-			String buffer = "";
-			int linenum = 1;
-			int charnum = 0;
-			int index = 1;
-			String type = "";
+			
+			CToken token  = null;
+			CToken previousToken = null;
 		
 	        //BufferedReader reader = new BufferedReader(
 			PushbackReader reader = new PushbackReader(
 	            new InputStreamReader(
-	                new FileInputStream("example1.x"),
+	                new FileInputStream("ex5.x"),
 	                Charset.forName("UTF-8")));
-	        int c;
-	        while((c = reader.read()) != -1) {
-	          char character = (char) c;
-	          charnum++;
-	          //System.out.println(character);
-	          
-	          // check if - is negative or minus sign; check next token 
-	          //  -- if next token is const literal == neg
-	          //  -- else minus
-	          
-	          if(character == '\n'){
-	        	  // remember to print out a line for end of file
-	        	  linenum++;
-	        	  charnum = 0;
-	          }
-
-	          // ==, <=, >= need to check 2 characters
-	          else if (character == '.') {
-	        	  c  = reader.read();
-	        	  character = (char) c;
-	        	  if (!Character.isDigit(character)){ // identifier.identifier i.e class.type
-	        		  System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
-	        		  buffer = "";
-	        		  reader.unread((int)character);
-	        		  
-	        		  buffer += '.';
-	        		  index = charnum;
-	        		  System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
-	        		  buffer = "";
-	        		  //index = charnum;
-	        	  }
-	        	  else if (Character.isDigit(character)){ //float
-	        		  buffer += character;
-	        		  charnum++;
-	        	  }   		  
-	          }
-	          else if ( character == '-'){
-	        	  buffer += character;
-	        	  c  = reader.read();
-	        	  character = (char) c;
-	        	  if (character == ' '){		// subtraction
-	        		  // move printing to later????
-	        		  System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
-	        		  buffer = "";
-	        		  reader.unread((int)character);
-	        	  }
-	        	  else{							// number
-	        		  buffer += character;
-	        		  charnum++;
-	        	  }
-	          }
-	          else if (character == '=' || character == '<' ||
-	        	  character == '>' || character == '!') {
-	        	  buffer += character;
-	        	  c  = reader.read();
-	        	  character = (char) c;
-	        	  if (character == '='){
-	        		  buffer += character;
-	        		  //simpler way of printing??? exit here??
-	        		  System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
-	        		  buffer = "";
-	        		  charnum++;
-	        		  index = charnum + 2; // identifier += digit; index should be at 'd'; charnum at '='
-	        	  }
-	        	  else{
-	        		  System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
-	        		  buffer = "";
-	        		  reader.unread((int)character);
-	        		  index = charnum + 2;
-	        	  }
-	          }
-	          else if (character == '(' || character == ')' || character == ';' ||
-	        	  character == '+' || character == '*' || character == '/' ||
-	        	  character == '{' || character == '}' || character == ',') {
-	        	  if(buffer.compareTo("") != 0){
-	        		  // print identifier preceding operator
-	        		  System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
-		        	  buffer = "";
-	        	  }
-	        	  
-	        	  buffer += character;
-	        	  index = charnum;
-	        	  // print out operator
-	        	  System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
-	        	  buffer = "";
-	          }
-	          else if(!Character.isWhitespace(character)) {
-	        	  buffer += character;
-	          }
-	          else if(character != '\t' && buffer.compareTo("") != 0) {
-	        	  System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
-	        	  buffer = "";
-	        	  index = charnum + 1;
-	        	  //call CToken to initialize a new object
-	        	  //clear buffer
-	          }
-	        }
-	        
+			int c;
+			while((c = reader.read()) != -1) {
+				reader.unread(c);
+				token = GetNextToken(reader, previousToken);
+				token.print();
+				//System.out.println("returned");
+			}
 	}
 	
 	// get the next in the list
-	public static CToken GetNextToken(){
+	public static CToken GetNextToken(PushbackReader reader, CToken previousToken) throws IOException{
 		CToken token = null;
+		String buffer = "";
+		String type = "";
+		int c = 0;
+        while(type.equals("") && ((c = reader.read()) != -1) ){//token == null) {
+          char character = (char) c;
+          //System.out.println(character);
+          charnum++;
+          //System.out.println(character);
+          
+          
+          
+          if(character == '\n'){
+        	  // remember to print out a line for end of file
+        	  if (buffer.compareTo("") != 0) {
+	        	  type = categorize(buffer);
+	        	  token = new CToken(linenum, charnum, type, buffer);
+	        	  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
+        		  //System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
+        		  buffer = "";
+        	  }
+        	  linenum++;
+        	  charnum = 0; // CHANGE TO charnum = 1; !!!!!
+        	  index = 1;	//ADDED THIS!!!!!
+          }
+
+          //leading tab
+          else if(character == '\t'){
+        	  index = charnum + 1;
+          }
+          
+          else if(character == ' '){
+        	  //charnum++;
+        	  //index++;
+        	  if (buffer.compareTo("") != 0) {
+	        	  type = categorize(buffer);
+	        	  token = new CToken(linenum, charnum, type, buffer);
+	        	  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
+        		  //System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
+        		  buffer = "";
+        	  }
+        	  index = charnum + 1;
+        	  
+          }
+          
+          // ==, <=, >= need to check 2 characters
+          else if (character == '.') {
+        	  c  = reader.read();	//PEEK NEXT CHARACTER
+        	  character = (char) c;
+        	  if (!Character.isDigit(character)){ // identifier.identifier i.e class.type
+	        	  type = categorize(buffer);
+	        	  token = new CToken(linenum, charnum, type, buffer);
+	        	  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
+        		  //System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
+        		  buffer = "";
+        		  reader.unread((int)character);
+        		  //////////
+        		  //problem///
+        		  //////////
+        		  buffer += '.';
+        		  index = charnum;
+	        	  type = categorize(buffer);
+	        	  token = new CToken(linenum, charnum, type, buffer);
+	        	  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
+        		  //System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
+        		  buffer = "";
+        		  index = charnum+1; //ADDED THIS!!!!!!
+        		  //index = charnum;
+        	  }
+        	  else if (Character.isDigit(character)){ //float
+        		  reader.unread((int)character);
+        		  //buffer += character;
+        		  buffer += '.';
+        		  //charnum++;
+        	  }   		  
+          }
+          // check if - is negative or minus sign; check next token 
+          //  -- if next token is const literal == neg
+          //  -- else minus
+          else if ( character == '-'){	//check negative or subtraction
+        	  buffer += character;
+        	  c  = reader.read();
+        	  character = (char) c;
+        	  if (character == ' '){		// subtraction
+        		  // move printing to later????
+	        	  type = categorize(buffer);
+	        	  token = new CToken(linenum, charnum, type, buffer);
+	        	  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
+        		  //System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
+        		  buffer = "";
+        		  reader.unread((int)character);
+        		  index = charnum + 2; //ADDED THIS!!! 
+        	  }
+        	  else{							// negative number
+        		  buffer += character;
+        		  charnum++;
+        	  }
+          }
+          else if (character == '=' || character == '<' || //==, <=, >=, !=
+        	  character == '>' || character == '!') {
+        	  buffer += character;
+        	  c  = reader.read();
+        	  character = (char) c;
+        	  if (character == '='){
+        		  buffer += character;
+        		  //simpler way of printing --> printed once the white space afterwards is read
+        		  //
+        		  
+	        	  //type = categorize(buffer);
+	        	  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
+        		  //System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
+        		  //buffer = "";
+        		  //charnum++;
+        		  //index = charnum + 2; // identifier += digit; index should be at 'd'; charnum at '='
+        	  }
+        	  else{ //=, <, >, ! 
+	        	  //type = categorize(buffer);
+	        	  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
+        		  //System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
+        		  //buffer = "";
+        		  reader.unread((int)character);
+        		  //index = charnum + 2;  //identifier = identifier; index @ 'i', charnum @ '='
+        	  }
+          }
+          else if (character == '(' || character == ')' || character == ';' ||
+        	  character == '+' || character == '*' || character == '/' ||
+        	  character == '{' || character == '}' || character == ',') {
+        	  // peeking at the next char = operator
+        	  // print identifier preceding operator
+        	  if(buffer.compareTo("") != 0){
+	        	  type = categorize(buffer);
+	        	  token = new CToken(linenum, charnum, type, buffer);
+	        	  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
+        		  //System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
+	        	  buffer = "";
+	        	  reader.unread(c);
+	        	  charnum--;
+	        	  break;
+	        	  
+        	  }
+        	  
+        	  buffer += character;
+        	  index = charnum;
+        	  // print out operator
+        	  // UNREAD THIS AND DONT PRINT OUT FOR PARSER
+        	  // DONT WANT TO READ 2 NEXT TOKEN
+        	  type = categorize(buffer);
+        	  token = new CToken(linenum, charnum, type, buffer);
+        	  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
+        	  //System.out.printf("Token: %s, line: %d, index: %d%n", buffer, linenum, index);
+        	  buffer = "";
+        	  index = charnum + 1; //set the index to the next char
+          }
+          else if(Character.isDigit(character) || Character.isLetter(character) || 
+        		  character == '_'){
+        	  buffer += character;
+          }
+          
+          else {      //if(!Character.isWhitespace(character)) {
+        	  // return the current token if there is one
+        	  if(!buffer.equals("")){
+        		  //System.out.printf("current buffer:   %s%n", buffer);
+        		  type = categorize(buffer);
+        		  token = new CToken(linenum, charnum, type, buffer);
+        		  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
+        		  index = charnum;
+        		  // unread the invalid token
+        		  reader.unread(c);
+        		  charnum--;
+        		  //buffer = "";
+        		  break;
+        	  }
+        	  // else create and return invalid token
+        	  //buffer = "";
+        	  buffer += character;
+        	  type = categorize(buffer);
+        	  token = new CToken(linenum, charnum, type, buffer);
+    		  //System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
+        	  index = charnum + 1;
+    		  //System.out.printf("execute?   %s%n", buffer);
+          }
+
+          /*
+          else if(character != '\t' && buffer.compareTo("") != 0) {
+        	  type = categorize(buffer);
+        	  System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
+        	  buffer = "";
+        	  index = charnum + 1;
+        	  System.out.println("execute?");
+        	  //call CToken to initialize a new object
+        	  //clear buffer
+          }
+          */
+        }
+        // check if the next character is EOF
+        // may be bug: return an empty token instead of last token
+        // override the last token
+        if(c != 0 && (c = reader.read()) == -1) {//c == -1){
+        	// if EOF but buffer contains a token, return token
+        	/*
+        	if(!buffer.equals("")) {
+        		type = categorize(buffer);
+            	System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
+            	System.out.println("execute?");
+            	//buffer = "";
+        	}
+        	*/
+        	// EOF --> print out last line for CScanner
+        	//else {
+        		type = categorize(buffer);
+        		token = new CToken(linenum, charnum, type, buffer);
+        		//System.out.printf("@%4d,%4d%14s \"%s\"%n", linenum, index, type, buffer);
+        	//}
+        	//System.out.println("EOF");
+        }
+        // if not EOF, put it back onto the stream
+        else {
+        	reader.unread(c);
+        }
+        
+        //reader.unread(c);
 		return token;
 	}
 	
@@ -136,5 +266,145 @@ public class CScanner {
 		return token;
 	
 	}
+	
+	private static String categorize(String buffer){
+		String type = "None";
+		//boolean isIntConstant = false;
+	    //boolean isFloatConstant = false;
+	    //boolean isIdentifier = false; 
+	    
+		if(buffer.equals("=") || buffer.equals("==") || buffer.equals("!") ||
+				buffer.equals("!=")||buffer.equals("<") || buffer.equals("<=") ||
+				buffer.equals(">") || buffer.equals(">=") ||
+				buffer.equals("(") || buffer.equals(")") ||
+				buffer.equals("{") || buffer.equals("}") || buffer.equals("+") ||
+				buffer.equals("-") || buffer.equals(",") || buffer.equals(";") ||
+				buffer.equals(".") || buffer.equals("/") || buffer.equals("*")){
+			type = "Operator";
+		}
+		else if(buffer.equals("interface") || buffer.equals("int") || buffer.equals("double") ||
+				buffer.equals("void")||buffer.equals("main") || buffer.equals("instance") ||
+				buffer.equals("let") || buffer.equals("new") || buffer.equals("storage") ||
+				buffer.equals("implementation")||buffer.equals("return") || buffer.equals("self") ||
+				buffer.equals("if") || buffer.equals("global") || buffer.equals("nil") ||
+				buffer.equals("while")||buffer.equals("unsigned") || buffer.equals("short") ||
+				buffer.equals("long") || buffer.equals("char") || buffer.equals("float")){
+			type = "Keyword";
+		}
+		else if (buffer.compareTo("") == 0) {
+			type = "None";
+		}
+		else if(checkInt(buffer)){
+			type = "IntConstant";
+		}
+		else if (checkFloat(buffer)) {
+			type = "FloatConstant";
+		}
+		else if(checkIdentifier(buffer)) {
+			type = "Identifier";
+		}
+		else {
+			type = "Invalid";
+		}
+/*		else {
+			if(checkInt(buffer))
+				type = "IntConstant";
+			else if(checkFloat(buffer))
+				type = "FloatConstant";
+			else if(checkIdentifier(buffer))
+				type = "Identifier";
+			
+		    try{
+		        Integer.parseInt(buffer);
+		    }
+		    catch(NumberFormatException e){
+		        isIntConstant = false;
+		        
+		        try{
+		        	Double.parseDouble(buffer);
+		        }
+		        catch(NumberFormatException f){
+		        	isFloatConstant = false; 
+		        }
+		        
+		         //check if identifier
+		        if(!(buffer.charAt(0) == '_' || Character.isLetter(buffer.charAt(0))) )
+		       		isIdentifier = false;
+		        else{
+		        	for (int i = 1; i < buffer.length(); i++){
+		        		if(!(Character.isLetter(buffer.charAt(i))) || 
+		        				!(Character.isDigit(buffer.charAt(i))) || !(buffer.charAt(i) == '_')){
+		        			isIdentifier = false; 
+		       				break; 
+		       			} // if
+		       		} // for
+		        } // else
+		        
+		    } // catch
+*/
+//		} // big else
+		
+		
+		return type;
+	} // catergorize
+	
+	private static boolean checkInt(String buffer){
+		boolean isIntConstant = true;
+		if(!(buffer.charAt(0) == '-' || Character.isDigit(buffer.charAt(0))) )
+			isIntConstant = false;
+		else{
+			for (int i = 1; i < buffer.length(); i++){
+        		if(!(Character.isDigit(buffer.charAt(i)))){
+        			isIntConstant = false; 
+       				break; 
+       			} // if
+       		} // for
+		}
+	    
+		return isIntConstant;
+	}
+	
+	private static boolean checkFloat(String buffer){
+		boolean isFloatConstant = false;
+		int periodCounter = 0;
+		if(!(buffer.charAt(0) == '-' || Character.isDigit(buffer.charAt(0))) )
+			isFloatConstant = false;
+		else {
+			for (int i = 1; i < buffer.length(); i++){
+				// check if char = period
+        		// float only true when there is one period
+        		if(buffer.charAt(i) == '.'){
+        			if(periodCounter == 0)
+        				isFloatConstant = true;
+        			periodCounter++;
+        		}
+				// if char is not digit or more than one period
+        		else if(!(Character.isDigit(buffer.charAt(i))) || periodCounter > 1){
+        			isFloatConstant = false; 
+       				break; 
+       			} 
+        		
 
+       		} // for
+		}
+	    
+		return isFloatConstant;
+	}
+	
+	private static boolean checkIdentifier(String buffer){
+		boolean isIdentifier = true;
+        if(!(buffer.charAt(0) == '_' || Character.isLetter(buffer.charAt(0))) )
+       		isIdentifier = false;
+        else{
+        	for (int i = 1; i < buffer.length(); i++){
+        		if(!(Character.isLetter(buffer.charAt(i))) && 
+        				!(Character.isDigit(buffer.charAt(i))) && !(buffer.charAt(i) == '_')){
+        			isIdentifier = false; 
+       				break; 
+       			} // if
+       		} // for
+        } // else
+        return isIdentifier;
+	}
+	
 }

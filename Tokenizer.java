@@ -1,4 +1,4 @@
-public class Tokenizer{
+/*public class Tokenizer{
     public static void main(String[] args){
         BufferedReader reader = new BufferedReader(
             new InputStreamReader(
@@ -11,3 +11,4 @@ public class Tokenizer{
         }
     }
 }
+*/
