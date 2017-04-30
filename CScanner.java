@@ -29,7 +29,7 @@ public class CScanner {
 	public static void main(String[] args) throws IOException{
 			
 			CToken token  = new CToken(0,0,"","");
-			CToken previousToken = new CToken(0,0,"","");
+			//CToken previousToken = new CToken(0,0,"","");
 		
 	        //BufferedReader reader = new BufferedReader(
 			
@@ -42,7 +42,7 @@ public class CScanner {
 			int c;
 			while((c = reader.read()) != -1) {
 				reader.unread(c);
-				token = GetNextToken(reader, previousToken);
+				token = GetNextToken(reader, token);
 				token.print();
 			}
 	}
@@ -50,8 +50,10 @@ public class CScanner {
 	// get the next in the list
 	public static CToken GetNextToken(PushbackReader reader, CToken previousToken) throws IOException{
 		CToken token = new CToken(0,0,"","");
+		CToken prevToken = new CToken(previousToken);	//ADDED THIS: to check previous token's type
 		String buffer = "";
 		String type = "";
+		
 		int c = 0;
         while(type.equals("") && ((c = reader.read()) != -1) ){//token == null) {
           char character = (char) c;
@@ -80,38 +82,62 @@ public class CScanner {
         	  if (buffer.compareTo("") != 0) {
 	        	  type = categorize(buffer);
 	        	  token.set(linenum, index, type, buffer);
-
         		  buffer = "";
         	  }
         	  index = charnum + 1;
         	  
           }
           
-          // ==, <=, >= need to check 2 characters
+          //distinguish float from identifier
+          else if(Character.isDigit(character)) {
+        	  buffer += character;
+        	  c = reader.read();
+        	  char tempChar = (char) c;
+        	  if(tempChar == '.'){
+        		  String tempType = categorize(buffer);
+        		  if(tempType.equals("IntConstant")) {
+        			  buffer += tempChar;
+        			  charnum++;
+        		  }
+        		  else {
+        			  reader.unread(c);
+        		  }
+        	  }
+        	  else {
+        		  reader.unread(c);
+        	  }
+          }
+          
           else if (character == '.') {
-        	  c  = reader.read();	//PEEK NEXT CHARACTER
-        	  character = (char) c;
+        	  //c  = reader.read();	//PEEK NEXT CHARACTER
+        	  //character = (char) c;
         	  
         	  // identifier.identifier i.e class.type
-        	  if (!Character.isDigit(character)){ 
+        	  //if (!Character.isDigit(character)){ 
         		  
         		  // create token of identifier before .
         		  if(!buffer.equals("")) {
         			  type = categorize(buffer);
         			  token.set(linenum, index, type, buffer);
 
-        			  reader.unread(c);
+        			  
+        			  /*
+        			   * old crap that is not needed
+        			  //reader.unread(c);
         			  // unread the . so it can be detected as a token the next round
-        			  int period = '.';
-        			  reader.unread(period);
+        			  //int period = '.';
+        			  //reader.unread(period);
         			  // char at the char before '.', but charnum is at '.' right now, so decrement
+        			  */ 
+        			  
+        			  reader.unread(c);
         			  charnum--;
         			  //break;
         		  }
         		  
         		  // past the first identifier --> create '.' token
         		  else {
-        			  reader.unread((int)character);
+        			  //reader.unread((int)character);
         			  buffer += '.';
         			  index = charnum;
         			  type = categorize(buffer);
@@ -119,13 +145,14 @@ public class CScanner {
 
         			  index = charnum + 1;
         		  }
-
-        	  }
-        	  else if (Character.isDigit(character)){ //float
+        	  //}
+        	/*
+        	  if (Character.isDigit(character)) { //float
         		  reader.unread((int)character);
         		  //buffer += character;
         		  buffer += '.';
-        	  }   		  
+        	  }
+        	*/   		  
           }
           
           
@@ -134,23 +161,32 @@ public class CScanner {
           //  -- else minus
           // MUST CHECK IF PREV TOKEN IS IDENTIFIER --> IF YES = OPERATOR
           else if ( character == '-'){	//check negative or subtraction
-        	  buffer += character;
-        	  c  = reader.read();
-        	  character = (char) c;
-        	  if (character == ' '){		// subtraction
-        		  // move printing to later????
-	        	  type = categorize(buffer);
-	        	  token.set(linenum, index, type, buffer);
-
-        		  buffer = "";
-        		  reader.unread((int)character);
-        		  index = charnum + 2; //ADDED THIS!!! 
+        	  // no space separating previous token and '-'
+        	  // i.e A-2
+        	  if(!buffer.equals("")) {
+        		  type = categorize(buffer);
+    			  token.set(linenum, index, type, buffer);
+    			  reader.unread((int)character);
+    			  charnum--;
         	  }
-        	  else{							// negative number
+        	  
+        	  // buffer is empty, current char is '-'
+        	  else {
+        		  //both neg num or operator --> add '-' to buffer
         		  buffer += character;
-        		  charnum++;
+        		  index = charnum;
+
+        		  // check the previous token
+        		  if (prevToken.toktype.equals("Identifier")) {		// subtraction
+        			  type = categorize(buffer);
+        			  token.set(linenum, index, type, buffer);
+
+        			  index = charnum + 1; //ADDED THIS!!! 
+        		  }
         	  }
           }
+          
+          // ==, <=, >= need to check 2 characters
           else if (character == '=' || character == '<' || //==, <=, >=, !=
         	  character == '>' || character == '!') {
         	  buffer += character;
@@ -180,17 +216,13 @@ public class CScanner {
           else if (character == '(' || character == ')' || character == ';' ||
         	  character == '+' || character == '*' || character == '/' ||
         	  character == '{' || character == '}' || character == ',') {
-        	  // peeking at the next char = operator
         	  // print identifier preceding operator
         	  if(buffer.compareTo("") != 0){
 	        	  type = categorize(buffer);
 	        	  token.set(linenum, index, type, buffer);
-
-	        	  buffer = "";
 	        	  reader.unread(c);
 	        	  charnum--;
 	        	  break;
-	        	  
         	  }
         	  
         	  buffer += character;
@@ -200,12 +232,11 @@ public class CScanner {
         	  // DONT WANT TO READ 2 NEXT TOKEN
         	  type = categorize(buffer);
         	  token.set(linenum, index, type, buffer);
-
-        	  buffer = "";
         	  index = charnum + 1; //set the index to the next char
-          }
-          else if(Character.isDigit(character) || Character.isLetter(character) || 
-        		  character == '_'){
+          } 
+          
+          // letters and underscore
+          else if(Character.isLetter(character) || character == '_'){
         	  buffer += character;
           }
           
